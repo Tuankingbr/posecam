@@ -1,0 +1,82 @@
+name: Build PoseCam APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+
+      # 1. Lấy source từ GitHub
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Giải nén PoseCam
+      - name: Extract project
+        run: |
+          unzip -o posecam_mvp.zip
+          test -f posecam_mvp/pubspec.yaml
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/posecam_mvp" >> $GITHUB_ENV
+
+      # 3. Cài Java 17
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 4. Cài Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # 5. Tạo Android project mới
+      - name: Generate Android project
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          rm -rf android
+          flutter create . \
+            --platforms=android \
+            --org com.posecam
+
+      # 6. Cài dependencies
+      - name: Get dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          flutter pub get
+
+      # 7. Kiểm tra Dart code
+      - name: Analyze Flutter code
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          flutter analyze
+
+      # 8. Build APK Release
+      - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          flutter build apk --release
+
+      # 9. Kiểm tra APK đã tạo
+      - name: Check APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "APK files:"
+          ls -lh build/app/outputs/flutter-apk/
+          test -f build/app/outputs/flutter-apk/app-release.apk
+
+      # 10. Upload APK
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PoseCam-APK
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
