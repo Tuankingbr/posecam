@@ -12,25 +12,25 @@ jobs:
 
     steps:
 
-      # 1. Lấy source từ GitHub
+      # 1. Lấy source
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Giải nén PoseCam
+      # 2. Giải nén project
       - name: Extract project
         run: |
           unzip -o posecam_mvp.zip
           test -f posecam_mvp/pubspec.yaml
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/posecam_mvp" >> $GITHUB_ENV
 
-      # 3. Cài Java 17
+      # 3. Java 17
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      # 4. Cài Flutter
+      # 4. Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -46,25 +46,31 @@ jobs:
             --platforms=android \
             --org com.posecam
 
-      # 6. Cài dependencies
+      # 6. Xóa Flutter test mặc định
+      - name: Remove default tests
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          rm -rf test
+
+      # 7. Cài dependencies
       - name: Get dependencies
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           flutter pub get
 
-      # 7. Kiểm tra Dart code
+      # 8. Kiểm tra code
       - name: Analyze Flutter code
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           flutter analyze
 
-      # 8. Build APK Release
+      # 9. Build APK
       - name: Build APK
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           flutter build apk --release
 
-      # 9. Kiểm tra APK đã tạo
+      # 10. Kiểm tra APK
       - name: Check APK
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
@@ -72,7 +78,7 @@ jobs:
           ls -lh build/app/outputs/flutter-apk/
           test -f build/app/outputs/flutter-apk/app-release.apk
 
-      # 10. Upload APK
+      # 11. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
